@@ -32,10 +32,10 @@ def duration(filename):
 def get_mps_and_keys(api_url):
     response = requests.get(api_url)
     response_json = response.json()
-    mpd = response_json.get('MPD')
-    keys = response_json.get('KEYS')
+    mpd = response_json.get('mpd_url')
+    keys = response_json.get('keys')
     return mpd, keys
-   
+
 def exec(cmd):
         process = subprocess.run(cmd, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         output = process.stdout.decode()
@@ -76,7 +76,7 @@ async def pdf_download(url, file_name, chunk_size=1024 * 10):
             if chunk:
                 fd.write(chunk)
     return file_name   
-   
+
 
 def parse_vid_info(info):
     info = info.strip()
@@ -114,11 +114,11 @@ def vid_info(info):
             try:
                 if "RESOLUTION" not in i[2] and i[2] not in temp and "audio" not in i[2]:
                     temp.append(i[2])
-                    
+
                     # temp.update(f'{i[2]}')
                     # new_info.append((i[2], i[0]))
                     #  mp4,mkv etc ==== f"({i[1]})" 
-                    
+
                     new_info.update({f'{i[2]}':f'{i[0]}'})
 
             except:
@@ -134,7 +134,7 @@ async def decrypt_and_merge_video(mpd_url, keys_string, output_path, output_name
         cmd1 = f'yt-dlp -f "bv[height<={quality}]+ba/b" -o "{output_path}/file.%(ext)s" --allow-unplayable-format --no-check-certificate --external-downloader aria2c "{mpd_url}"'
         print(f"Running command: {cmd1}")
         os.system(cmd1)
-        
+
         avDir = list(output_path.iterdir())
         print(f"Downloaded files: {avDir}")
         print("Decrypting")
@@ -168,7 +168,7 @@ async def decrypt_and_merge_video(mpd_url, keys_string, output_path, output_name
             (output_path / "video.mp4").unlink()
         if (output_path / "audio.m4a").exists():
             (output_path / "audio.m4a").unlink()
-        
+
         filename = output_path / f"{output_name}.mp4"
 
         if not filename.exists():
@@ -200,7 +200,7 @@ async def run(cmd):
     if stderr:
         return f'[stderr]\n{stderr.decode()}'
 
-    
+
 
 def old_download(url, file_name, chunk_size = 1024 * 10):
     if os.path.exists(file_name):
@@ -257,8 +257,8 @@ async def download_video(url,cmd, name):
         return os.path.isfile.splitext[0] + "." + "mp4"
 
 
-async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name):
-    reply = await m.reply_text(f"**★彡 Uploading 彡★ ...⏳**\n\n📚𝐓𝐢𝐭𝐥𝐞 » {name}\n\n✦𝐁𝐨𝐭 𝐌𝐚𝐝𝐞 𝐁𝐲 ✦ 𝙎𝘼𝙄𝙉𝙄 𝘽𝙊𝙏𝙎🐦")
+async def send_doc(bot: Client, m: Message, cc, ka, cc1, prog, count, name, channel_id):
+    reply = await bot.send_message(channel_id, f"Downloading pdf:\n<pre><code>{name}</code></pre>")
     time.sleep(1)
     start_time = time.time()
     await bot.send_document(ka, caption=cc1)
@@ -282,7 +282,7 @@ def decrypt_file(file_path, key):
 
 async def download_and_decrypt_video(url, cmd, name, key):  
     video_path = await download_video(url, cmd, name)  
-    
+
     if video_path:  
         decrypted = decrypt_file(video_path, key)  
         if decrypted:  
@@ -292,28 +292,28 @@ async def download_and_decrypt_video(url, cmd, name, key):
             print(f"Failed to decrypt {video_path}.")  
             return None  
 
-async def send_vid(bot: Client, m: Message,cc,filename,thumb,name,prog):
+async def send_vid(bot: Client, m: Message, cc, filename, thumb, name, prog, channel_id):
     subprocess.run(f'ffmpeg -i "{filename}" -ss 00:00:10 -vframes 1 "{filename}.jpg"', shell=True)
     await prog.delete (True)
-    reply = await m.reply_text(f"<b>Generate Thumbnail:</b>\n<blockquote><b>{name}</b></blockquote>")
+    reply1 = await bot.send_message(channel_id, f"**📩 Uploading Video 📩:-**\n<blockquote>**{name}**</blockquote>")
+    reply = await m.reply_text(f"**Generate Thumbnail:**\n<blockquote>**{name}**</blockquote>")
     try:
         if thumb == "/d":
             thumbnail = f"{filename}.jpg"
         else:
             thumbnail = thumb
-            
+
     except Exception as e:
         await m.reply_text(str(e))
-      
+
     dur = int(duration(filename))
     start_time = time.time()
 
     try:
-        await m.reply_video(filename,caption=cc, supports_streaming=True,height=720,width=1280,thumb=thumbnail,duration=dur, progress=progress_bar,progress_args=(reply,start_time))
+        await bot.send_video(channel_id, filename, caption=cc, supports_streaming=True, height=720, width=1280, thumb=thumbnail, duration=dur, progress=progress_bar, progress_args=(reply, start_time))
     except Exception:
-        await m.reply_document(filename,caption=cc, progress=progress_bar,progress_args=(reply,start_time))
-    
-    finally:
-        await reply.delete(True)
-        os.remove(filename)
-        os.remove(f"{filename}.jpg")
+        await bot.send_document(channel_id, filename, caption=cc, progress=progress_bar, progress_args=(reply, start_time))
+    os.remove(filename)
+    await reply.delete(True)
+    await reply1.delete(True)
+    os.remove(f"{filename}.jpg")
